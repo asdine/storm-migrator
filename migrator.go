@@ -14,7 +14,8 @@ import (
 // New instanciates a Migrator for the given database
 func New(path string) *Migrator {
 	return &Migrator{
-		path: path,
+		path:   path,
+		kvKeys: make(map[string][]interface{}),
 	}
 }
 
@@ -22,27 +23,21 @@ func New(path string) *Migrator {
 type Migrator struct {
 	path       string
 	instances  []interface{}
+	kvKeys     map[string][]interface{}
 	forceCodec codec.MarshalUnmarshaler
 }
 
-// AddBucket registers a bucket to migrate based on the given instance.
-func (m *Migrator) AddBucket(instance interface{}) {
-	m.instances = append(m.instances, instance)
+// AddBuckets registers buckets to migrate based on the given instances.
+// Must be used for the buckets created with Save or Init.
+func (m *Migrator) AddBuckets(instances ...interface{}) {
+	m.instances = append(m.instances, instances...)
 }
 
-//
-// // AddBuckets registers buckets to migrate based on the given instances.
-// // Must be used for the buckets created with Save or Init.
-// func (m *Migrator) AddBuckets(instances ...interface{}) {
-// 	m.instances = append(m.instances, instances...)
-// }
-
-//
-// // AddKV registers a key value pair to migrate based on the bucket name, the inst.
-// // Must be used for the buckets created using Set.
-// func (m *Migrator) AddKV(bucketName string, keyInstance interface{}, valueInstances ...interface{}) {
-// 	m.instances = instances
-// }
+// AddKV registers a key value pair to migrate based on the bucket name, the inst.
+// Must be used for the buckets created using Set.
+func (m *Migrator) AddKV(bucketName string, keyInstances []interface{}) {
+	m.kvKeys[bucketName] = append(m.kvKeys[bucketName], keyInstances...)
+}
 
 // Run the migration
 func (m *Migrator) Run(dst string, options ...func(*Migrator) error) error {
@@ -72,9 +67,10 @@ func (m *Migrator) Run(dst string, options ...func(*Migrator) error) error {
 	if err != nil {
 		return err
 	}
+	defer b.Close()
 
 	migrator := stormv05.NewMigrator(b, m.forceCodec)
-	return migrator.Run(m.instances)
+	return migrator.Run(m.instances, m.kvKeys)
 }
 
 func (m *Migrator) checkSourceDB() error {
