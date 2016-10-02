@@ -1,0 +1,40 @@
+package storm
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestInit(t *testing.T) {
+	db, cleanup := createDB(t)
+	defer cleanup()
+
+	var u IndexedNameUser
+	err := db.One("Name", "John", &u)
+	assert.Error(t, err)
+	assert.EqualError(t, err, "not found")
+
+	err = db.Init(&u)
+	assert.NoError(t, err)
+
+	err = db.One("Name", "John", &u)
+	assert.Error(t, err)
+	assert.Equal(t, ErrNotFound, err)
+
+	err = db.Init(&ClassicBadTags{})
+	assert.Error(t, err)
+	assert.Equal(t, ErrUnknownTag, err)
+
+	err = db.Init(10)
+	assert.Error(t, err)
+	assert.Equal(t, ErrBadType, err)
+
+	err = db.Init(&ClassicNoTags{})
+	assert.Error(t, err)
+	assert.Equal(t, ErrNoID, err)
+
+	err = db.Init(&struct{ ID string }{})
+	assert.Error(t, err)
+	assert.Equal(t, ErrNoName, err)
+}

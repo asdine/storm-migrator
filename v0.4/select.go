@@ -1,0 +1,14 @@
+package storm
+
+import "github.com/asdine/storm-migrator/v0.4/q"
+
+// Select a list of records that match a list of matchers. Doesn't use indexes.
+func (n *node) Select(matchers ...q.Matcher) Query {
+	tree := q.And(matchers...)
+	return newQuery(n, tree)
+}
+
+// Select a list of records that match a list of matchers. Doesn't use indexes.
+func (s *DB) Select(matchers ...q.Matcher) Query {
+	return s.root.Select(matchers...)
+}
