@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	stormv04 "github.com/asdine/storm-migrator/v0.4"
-	"github.com/asdine/storm-migrator/v0.5/codec/json"
+	"github.com/asdine/storm/codec/json"
 	"github.com/stretchr/testify/require"
 )
 

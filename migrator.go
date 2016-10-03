@@ -8,14 +8,16 @@ import (
 
 	stormv05 "github.com/asdine/storm-migrator/v0.5"
 	"github.com/asdine/storm-migrator/v0.5/codec"
+	"github.com/asdine/storm-migrator/v0.5/codec/json"
 	"github.com/boltdb/bolt"
 )
 
 // New instanciates a Migrator for the given database
 func New(path string) *Migrator {
 	return &Migrator{
-		path:   path,
-		kvKeys: make(map[string][]interface{}),
+		path:       path,
+		kvKeys:     make(map[string][]interface{}),
+		forceCodec: json.Codec,
 	}
 }
 
@@ -39,7 +41,8 @@ func (m *Migrator) AddKV(bucketName string, keyInstances []interface{}) {
 	m.kvKeys[bucketName] = append(m.kvKeys[bucketName], keyInstances...)
 }
 
-// Run the migration
+// Run the migration.
+
 func (m *Migrator) Run(dst string, options ...func(*Migrator) error) error {
 	for _, option := range options {
 		err := option(m)
