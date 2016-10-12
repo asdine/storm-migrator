@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	stormv05 "github.com/asdine/storm-migrator/v0.5"
 	"github.com/asdine/storm-migrator/v0.5/codec"
 	"github.com/asdine/storm-migrator/v0.5/codec/json"
+	stormv06 "github.com/asdine/storm-migrator/v0.6"
 	"github.com/boltdb/bolt"
 )
 
@@ -42,7 +44,6 @@ func (m *Migrator) AddKV(bucketName string, keyInstances []interface{}) {
 }
 
 // Run the migration.
-
 func (m *Migrator) Run(dst string, options ...func(*Migrator) error) error {
 	for _, option := range options {
 		err := option(m)
@@ -72,8 +73,31 @@ func (m *Migrator) Run(dst string, options ...func(*Migrator) error) error {
 	}
 	defer b.Close()
 
-	migrator := stormv05.NewMigrator(b, m.forceCodec)
-	return migrator.Run(m.instances, m.kvKeys)
+	for {
+		version, err := m.getVersion(b)
+		if err != nil {
+			fmt.Println("1")
+			return err
+		}
+
+		switch {
+		case strings.HasPrefix(version, "0.4"):
+			migrator := stormv05.NewMigrator(b, m.forceCodec)
+			err = migrator.Run(m.instances, m.kvKeys)
+		case strings.HasPrefix(version, "0.5"):
+			migrator := stormv06.NewMigrator(b, m.forceCodec)
+			err = migrator.Run(m.instances, m.kvKeys)
+		case strings.HasPrefix(version, "0.6"):
+			return nil
+		default:
+			migrator := stormv05.NewMigrator(b, m.forceCodec)
+			err = migrator.Run(m.instances, m.kvKeys)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
 }
 
 func (m *Migrator) checkSourceDB() error {
@@ -107,6 +131,18 @@ func (m *Migrator) copyDB(path string) error {
 	}
 
 	return dst.Sync()
+}
+
+func (m *Migrator) getVersion(b *bolt.DB) (string, error) {
+	db, err := stormv05.Open("", stormv05.UseDB(b))
+	if err != nil {
+		return "", err
+	}
+
+	var v string
+	_ = db.Get("__storm_db", "version", &v)
+
+	return v, nil
 }
 
 // Codec option forces the codec used for the whole migration

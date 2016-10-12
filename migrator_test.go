@@ -55,7 +55,6 @@ func TestMigrator(t *testing.T) {
 		var v int
 		switch {
 		case i%2 == 0:
-			fmt.Println(fmt.Sprintf("string%d", i))
 			err = db.Get("bucket", fmt.Sprintf("string%d", i), &v)
 			require.NoError(t, err)
 			require.Equal(t, i, v)
